@@ -13,5 +13,9 @@ public class FenceSpawnerEditor : Editor
 		{
 			fenceSpawner.SpawnFence();
 		}
+		if (GUI.changed)
+		{
+			fenceSpawner.SpawnFence();
+		}
 	}
 }
