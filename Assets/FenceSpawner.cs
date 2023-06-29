@@ -13,13 +13,14 @@ public class FenceSpawner : MonoBehaviour
 	[SerializeField] private GameObject BarPrefab;
 	[SerializeField] private float BarLength;
 	[SerializeField] private List<Vector3> Points;
-	[SerializeField] private List<float> barHeights;
+
+	[SerializeField] private List<float> Heights;
 
 	private GameObject fenceParent;
 
 	public void SpawnFence()
 	{
-		if (Points.Count == 0 || barHeights.Count == 0) throw new ArgumentNullException();
+		if (Points.Count == 0 || Heights.Count == 0) throw new ArgumentNullException();
 
 		if (fenceParent != null)
 			DestroyImmediate(fenceParent);
@@ -47,7 +48,7 @@ public class FenceSpawner : MonoBehaviour
 				while (threeDDistance > BarLength)
 				{
 					// Reduce the XZ distance until the 3D distance is close to the desired barLength
-					position -= direction * 0.1f;
+					position -= direction * 0.01f;
 					position.y = GetTerrainHeight(position);
 					threeDDistance = Vector3.Distance(previousPosition, position);
 				}
@@ -59,7 +60,7 @@ public class FenceSpawner : MonoBehaviour
 				position.y = GetTerrainHeight(position);
 				Instantiate(PostPrefab, position, Quaternion.identity, fenceParent.transform);
 
-				foreach (var height in barHeights)
+				foreach (var height in Heights)
 				{
 					var barPosition = startPoint + direction * ((j + 0.5f) * BarLength + (BarLength * 0.5f));
 					barPosition.y += height;
@@ -90,11 +91,5 @@ public class FenceSpawner : MonoBehaviour
 		{
 			return position.y;
 		}
-	}
-
-	private enum FenceLayout
-	{
-		Line,
-		Multipoint
 	}
 }
