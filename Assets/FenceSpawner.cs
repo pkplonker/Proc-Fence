@@ -66,7 +66,7 @@ public class FenceSpawner : MonoBehaviour
 					bar.transform.localScale = barScale;
 
 					float adjustment = (BarLength * barScale.z);
-					bar.transform.position = startPoint + direction * ((j-1 + 0.5f) * BarLength + (BarLength * 0.5f)) - 
+					bar.transform.position = startPoint + direction * ((j-1 + 0.5f) * BarLength + (BarLength * 0.5f)) -
 					                         (direction * (BarLength - adjustment)) +
 					                         new Vector3(0, height, 0);
 				}
