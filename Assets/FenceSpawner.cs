@@ -37,10 +37,28 @@ public class FenceSpawner : MonoBehaviour
 			var distance = Vector3.Distance(startPoint, endPoint);
 			var quantity = Mathf.CeilToInt(distance / barLength);
 			var remainder = distance % barLength;
+			for (var j = 0; j < quantity; j++)
+			{
+				Vector3 previousPosition = startPoint + direction * ((j == 0 ? 0 : j - 1) * barLength);
+				previousPosition.y = GetTerrainHeight(previousPosition);
+
+				var position = startPoint + direction * (j * barLength);
+				position.y = GetTerrainHeight(position);
+
+				float threeDDistance = Vector3.Distance(previousPosition, position);
+				while (threeDDistance > barLength)
+				{
+					// Reduce the XZ distance until the 3D distance is close to the desired barLength
+					position -= direction * 0.01f;
+					position.y = GetTerrainHeight(position);
+					threeDDistance = Vector3.Distance(previousPosition, position);
+				}
+			}
 
 			for (var j = 0; j < quantity; j++)
 			{
 				var position = startPoint + direction * (j * barLength);
+				position.y = GetTerrainHeight(position);
 				Instantiate(postPrefab, position, Quaternion.identity, fenceParent.transform);
 
 				foreach (var height in heights)
@@ -61,6 +79,18 @@ public class FenceSpawner : MonoBehaviour
 					                         new Vector3(0, height, 0);
 				}
 			}
+		}
+	}
+	private float GetTerrainHeight(Vector3 position)
+	{
+		Ray ray = new Ray(position + Vector3.up * 1000f, Vector3.down);
+		if (Physics.Raycast(ray, out RaycastHit hitInfo))
+		{
+			return hitInfo.point.y;
+		}
+		else
+		{
+			return position.y;
 		}
 	}
 }
