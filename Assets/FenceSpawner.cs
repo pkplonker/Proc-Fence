@@ -61,17 +61,16 @@ public class FenceSpawner : MonoBehaviour
 					var barPosition = ((position - previousPost)/2) + previousPost;
 					barPosition.y += height;
 					var barDirection = (position - previousPost).normalized;
+					var barLength = Mathf.Sqrt(Mathf.Pow(position.x - previousPost.x, 2) + Mathf.Pow(position.y - previousPost.y, 2) + Mathf.Pow(position.z - previousPost.z, 2));
 
 					var barRotation = Quaternion.LookRotation(barDirection);
-					var bar = Instantiate(BarPrefab, barPosition, barRotation,
-						fenceParent.transform);
-					var test =GameObject.CreatePrimitive(PrimitiveType.Sphere);
-					test.transform.position = barPosition;
-					test.GetComponent<MeshRenderer>().sharedMaterial.color = Color.red;
-					test.transform.parent = fenceParent.transform;
+					var bar = Instantiate(BarPrefab, barPosition, barRotation, fenceParent.transform);
+					var barScale = bar.transform.localScale;
+					barScale.z *= barLength / BarLength;
+					bar.transform.localScale = barScale;
+
 					if (j != quantity ) continue;
 
-					var barScale = bar.transform.localScale;
 					barScale.z *= remainder / BarLength;
 					bar.transform.localScale = barScale;
 
