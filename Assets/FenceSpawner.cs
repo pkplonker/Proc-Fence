@@ -13,6 +13,7 @@ public class FenceSpawner : MonoBehaviour
 	[SerializeField] private GameObject BarPrefab;
 	[SerializeField] private float BarLength;
 	[SerializeField] private List<Vector3> Points;
+	[SerializeField] private float AngleThreshhold = 25f;
 
 	[SerializeField] private List<float> Heights;
 
@@ -28,7 +29,7 @@ public class FenceSpawner : MonoBehaviour
 		fenceParent = new GameObject("FenceParent");
 		fenceParent.transform.parent = this.transform;
 
-		for (var i = 0; i < Points.Count; i++)
+		for (var i = 0; i < (Points.Count>2? Points.Count: 1); i++)
 		{
 			var startPoint = Points[i];
 			var endPoint = Points[(i + 1) % Points.Count];
@@ -40,7 +41,9 @@ public class FenceSpawner : MonoBehaviour
 			Vector3 previousPost = Vector3.zero;
 			for (var j = 0; j <= quantity; j++)
 			{
-				var position = startPoint + (direction * (j * BarLength));
+				var positionVector = direction * (j * BarLength);
+				positionVector = Vector3.ClampMagnitude(positionVector, distance);
+				var position = startPoint + positionVector;
 				position.y = GetTerrainHeight(position);
 				if (j != quantity)
 				{
@@ -55,20 +58,24 @@ public class FenceSpawner : MonoBehaviour
 
 				foreach (var height in Heights)
 				{
-					var barPosition = position - previousPost + previousPost;
+					var barPosition = ((position - previousPost)/2) + previousPost;
 					barPosition.y += height;
-					var bar = Instantiate(BarPrefab, barPosition, Quaternion.LookRotation(direction),
+					var barDirection = (position - previousPost).normalized;
+
+					var barRotation = Quaternion.LookRotation(barDirection);
+					var bar = Instantiate(BarPrefab, barPosition, barRotation,
 						fenceParent.transform);
+					var test =GameObject.CreatePrimitive(PrimitiveType.Sphere);
+					test.transform.position = barPosition;
+					test.GetComponent<MeshRenderer>().sharedMaterial.color = Color.red;
+					test.transform.parent = fenceParent.transform;
 					if (j != quantity ) continue;
 
 					var barScale = bar.transform.localScale;
 					barScale.z *= remainder / BarLength;
 					bar.transform.localScale = barScale;
 
-					float adjustment = (BarLength * barScale.z);
-					bar.transform.position = startPoint + direction * ((j-1 + 0.5f) * BarLength + (BarLength * 0.5f)) -
-					                         (direction * (BarLength - adjustment)) +
-					                         new Vector3(0, height, 0);
+					bar.transform.position = ((position - previousPost)/2) + previousPost + new Vector3(0,height,0);
 				}
 
 				previousPost = position;
