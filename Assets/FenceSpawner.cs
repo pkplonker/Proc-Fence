@@ -9,19 +9,17 @@ using UnityEditor;
 #endif
 public class FenceSpawner : MonoBehaviour
 {
-	[SerializeField] private GameObject postPrefab;
-	[SerializeField] private GameObject barPrefab;
-	[SerializeField] private float barLength;
-	[SerializeField] private float distance;
-	[SerializeField] private List<Vector3> points;
-
-	[SerializeField] private List<float> heights;
+	[SerializeField] private GameObject PostPrefab;
+	[SerializeField] private GameObject BarPrefab;
+	[SerializeField] private float BarLength;
+	[SerializeField] private List<Vector3> Points;
+	[SerializeField] private List<float> barHeights;
 
 	private GameObject fenceParent;
 
 	public void SpawnFence()
 	{
-		if (points.Count == 0 || heights.Count == 0) throw new ArgumentNullException();
+		if (Points.Count == 0 || barHeights.Count == 0) throw new ArgumentNullException();
 
 		if (fenceParent != null)
 			DestroyImmediate(fenceParent);
@@ -29,27 +27,27 @@ public class FenceSpawner : MonoBehaviour
 		fenceParent = new GameObject("FenceParent");
 		fenceParent.transform.parent = this.transform;
 
-		for (var i = 0; i < points.Count; i++)
+		for (var i = 0; i < Points.Count; i++)
 		{
-			var startPoint = points[i];
-			var endPoint = points[(i + 1) % points.Count];
+			var startPoint = Points[i];
+			var endPoint = Points[(i + 1) % Points.Count];
 			var direction = (endPoint - startPoint).normalized;
 			var distance = Vector3.Distance(startPoint, endPoint);
-			var quantity = Mathf.CeilToInt(distance / barLength);
-			var remainder = distance % barLength;
+			var quantity = Mathf.CeilToInt(distance / BarLength);
+			var remainder = distance % BarLength;
 			for (var j = 0; j < quantity; j++)
 			{
-				Vector3 previousPosition = startPoint + direction * ((j == 0 ? 0 : j - 1) * barLength);
+				Vector3 previousPosition = startPoint + direction * ((j == 0 ? 0 : j - 1) * BarLength);
 				previousPosition.y = GetTerrainHeight(previousPosition);
 
-				var position = startPoint + direction * (j * barLength);
+				var position = startPoint + direction * (j * BarLength);
 				position.y = GetTerrainHeight(position);
 
 				float threeDDistance = Vector3.Distance(previousPosition, position);
-				while (threeDDistance > barLength)
+				while (threeDDistance > BarLength)
 				{
 					// Reduce the XZ distance until the 3D distance is close to the desired barLength
-					position -= direction * 0.01f;
+					position -= direction * 0.1f;
 					position.y = GetTerrainHeight(position);
 					threeDDistance = Vector3.Distance(previousPosition, position);
 				}
@@ -57,25 +55,25 @@ public class FenceSpawner : MonoBehaviour
 
 			for (var j = 0; j < quantity; j++)
 			{
-				var position = startPoint + direction * (j * barLength);
+				var position = startPoint + direction * (j * BarLength);
 				position.y = GetTerrainHeight(position);
-				Instantiate(postPrefab, position, Quaternion.identity, fenceParent.transform);
+				Instantiate(PostPrefab, position, Quaternion.identity, fenceParent.transform);
 
-				foreach (var height in heights)
+				foreach (var height in barHeights)
 				{
-					var barPosition = startPoint + direction * ((j + 0.5f) * barLength + (barLength * 0.5f));
+					var barPosition = startPoint + direction * ((j + 0.5f) * BarLength + (BarLength * 0.5f));
 					barPosition.y += height;
-					var bar = Instantiate(barPrefab, barPosition, Quaternion.LookRotation(direction),
+					var bar = Instantiate(BarPrefab, barPosition, Quaternion.LookRotation(direction),
 						fenceParent.transform);
 					if (j != quantity - 1) continue;
 
 					var barScale = bar.transform.localScale;
-					barScale.z *= remainder / barLength;
+					barScale.z *= remainder / BarLength;
 					bar.transform.localScale = barScale;
 
-					float adjustment = (barLength * barScale.z);
-					bar.transform.position = startPoint + direction * ((j + 0.5f) * barLength + (barLength * 0.5f)) -
-					                         (direction * (barLength - adjustment)) +
+					float adjustment = (BarLength * barScale.z);
+					bar.transform.position = startPoint + direction * ((j + 0.5f) * BarLength + (BarLength * 0.5f)) -
+					                         (direction * (BarLength - adjustment)) +
 					                         new Vector3(0, height, 0);
 				}
 			}
@@ -92,5 +90,11 @@ public class FenceSpawner : MonoBehaviour
 		{
 			return position.y;
 		}
+	}
+
+	private enum FenceLayout
+	{
+		Line,
+		Multipoint
 	}
 }
