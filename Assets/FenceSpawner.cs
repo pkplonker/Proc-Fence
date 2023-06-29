@@ -36,50 +36,46 @@ public class FenceSpawner : MonoBehaviour
 			var distance = Vector3.Distance(startPoint, endPoint);
 			var quantity = Mathf.CeilToInt(distance / BarLength);
 			var remainder = distance % BarLength;
-			for (var j = 0; j < quantity; j++)
-			{
-				Vector3 previousPosition = startPoint + direction * ((j == 0 ? 0 : j - 1) * BarLength);
-				previousPosition.y = GetTerrainHeight(previousPosition);
 
-				var position = startPoint + direction * (j * BarLength);
-				position.y = GetTerrainHeight(position);
-
-				float threeDDistance = Vector3.Distance(previousPosition, position);
-				while (threeDDistance > BarLength)
-				{
-					position -= direction * 0.01f;
-					position.y = GetTerrainHeight(position);
-					threeDDistance = Vector3.Distance(previousPosition, position);
-				}
-			}
-
-			for (var j = 0; j < quantity; j++)
+			Vector3 previousPost = Vector3.zero;
+			for (var j = 0; j <= quantity; j++)
 			{
 				var position = startPoint + (direction * (j * BarLength));
 				position.y = GetTerrainHeight(position);
-				Instantiate(PostPrefab, position, Quaternion.identity, fenceParent.transform);
-				
-				
+				if (j != quantity)
+				{
+					Instantiate(PostPrefab, position, Quaternion.identity, fenceParent.transform);
+				}
+
+				if (previousPost == Vector3.zero)
+				{
+					previousPost = position;
+					continue;
+				}
+
 				foreach (var height in Heights)
 				{
-					var barPosition = startPoint + direction * ((j + 0.5f) * BarLength + (BarLength * 0.5f));
+					var barPosition = position - previousPost + previousPost;
 					barPosition.y += height;
 					var bar = Instantiate(BarPrefab, barPosition, Quaternion.LookRotation(direction),
 						fenceParent.transform);
-					if (j != quantity - 1) continue;
+					if (j != quantity ) continue;
 
 					var barScale = bar.transform.localScale;
 					barScale.z *= remainder / BarLength;
 					bar.transform.localScale = barScale;
 
 					float adjustment = (BarLength * barScale.z);
-					bar.transform.position = startPoint + direction * ((j + 0.5f) * BarLength + (BarLength * 0.5f)) -
+					bar.transform.position = startPoint + direction * ((j-1 + 0.5f) * BarLength + (BarLength * 0.5f)) - 
 					                         (direction * (BarLength - adjustment)) +
 					                         new Vector3(0, height, 0);
 				}
+
+				previousPost = position;
 			}
 		}
 	}
+
 	private float GetTerrainHeight(Vector3 position)
 	{
 		Ray ray = new Ray(position + Vector3.up * 1000f, Vector3.down);
