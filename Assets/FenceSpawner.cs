@@ -13,8 +13,9 @@ public class FenceSpawner : MonoBehaviour
 	[SerializeField] private GameObject BarPrefab;
 	[SerializeField] private float BarLength;
 	[SerializeField] private List<Vector3> Points;
-	[SerializeField] private float AngleThreshhold = 25f;
-
+	[SerializeField] private Vector3 barRaycastOffset;
+	[SerializeField] private float postInsertionDepth = 0.2f;
+	[SerializeField] private bool randomisation;
 	[SerializeField] private List<float> Heights;
 
 	private GameObject fenceParent;
@@ -28,7 +29,7 @@ public class FenceSpawner : MonoBehaviour
 
 		fenceParent = new GameObject("FenceParent");
 		fenceParent.transform.parent = this.transform;
-
+		var postInsertion = new Vector3(0, postInsertionDepth, 0);
 		for (var i = 0; i < (Points.Count>2? Points.Count: 1); i++)
 		{
 			var startPoint = Points[i];
@@ -47,7 +48,7 @@ public class FenceSpawner : MonoBehaviour
 				position.y = GetTerrainHeight(position);
 				if (j != quantity)
 				{
-					Instantiate(PostPrefab, position, Quaternion.identity, fenceParent.transform);
+					Instantiate(PostPrefab, position - postInsertion, Quaternion.identity, fenceParent.transform);
 				}
 
 				if (previousPost == Vector3.zero)
@@ -63,6 +64,15 @@ public class FenceSpawner : MonoBehaviour
 					var barDirection = (position - previousPost).normalized;
 					var barLength = Mathf.Sqrt(Mathf.Pow(position.x - previousPost.x, 2) + Mathf.Pow(position.y - previousPost.y, 2) + Mathf.Pow(position.z - previousPost.z, 2));
 
+					Vector3 raycastOrigin = previousPost + new Vector3(0, height, 0) - barRaycastOffset;
+					RaycastHit[] hits = Physics.RaycastAll(raycastOrigin, barDirection, barLength);
+					//Debug.DrawLine(raycastOrigin,raycastOrigin+(barDirection*barLength),Color.red,10);
+
+					if (hits.Length>0)
+					{
+						continue;
+					}
+
 					var barRotation = Quaternion.LookRotation(barDirection);
 					var bar = Instantiate(BarPrefab, barPosition, barRotation, fenceParent.transform);
 					var barScale = bar.transform.localScale;
@@ -77,8 +87,12 @@ public class FenceSpawner : MonoBehaviour
 					}
 
 					bar.transform.localScale = barScale;
+
+					if (j != quantity) continue;
+
 					bar.transform.position = ((position - previousPost) / 2) + previousPost + new Vector3(0, height, 0);
 				}
+
 
 				previousPost = position;
 			}
@@ -97,4 +111,7 @@ public class FenceSpawner : MonoBehaviour
 			return position.y;
 		}
 	}
+
+	public void ClearPoints() => Points.Clear();
+	public void AddPoint(Vector3 position) => Points.Add(position);
 }
