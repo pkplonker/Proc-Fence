@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEditor;
 
 [InitializeOnLoad]
+[ExecuteInEditMode]
 #endif
 public class FenceSpawner : MonoBehaviour
 {
@@ -17,7 +18,6 @@ public class FenceSpawner : MonoBehaviour
 	[SerializeField] private float postInsertionDepth = 0.2f;
 	[SerializeField] private bool randomisation;
 	[SerializeField] private List<float> Heights;
-
 	private GameObject fenceParent;
 
 	public void SpawnFence()
@@ -27,10 +27,15 @@ public class FenceSpawner : MonoBehaviour
 		if (fenceParent != null)
 			DestroyImmediate(fenceParent);
 
-		fenceParent = new GameObject("FenceParent");
-		fenceParent.transform.parent = this.transform;
+		fenceParent = new GameObject("FenceParent")
+		{
+			transform =
+			{
+				parent = transform
+			}
+		};
 		var postInsertion = new Vector3(0, postInsertionDepth, 0);
-		for (var i = 0; i < (Points.Count>2? Points.Count: 1); i++)
+		for (var i = 0; i < (Points.Count > 2 ? Points.Count : 1); i++)
 		{
 			var startPoint = Points[i];
 			var endPoint = Points[(i + 1) % Points.Count];
@@ -39,7 +44,7 @@ public class FenceSpawner : MonoBehaviour
 			var quantity = Mathf.CeilToInt(distance / BarLength);
 			var remainder = distance % BarLength;
 
-			Vector3 previousPost = Vector3.zero;
+			var previousPost = Vector3.zero;
 			for (var j = 0; j <= quantity; j++)
 			{
 				var positionVector = direction * (j * BarLength);
@@ -47,9 +52,7 @@ public class FenceSpawner : MonoBehaviour
 				var position = startPoint + positionVector;
 				position.y = GetTerrainHeight(position);
 				if (j != quantity)
-				{
 					Instantiate(PostPrefab, position - postInsertion, Quaternion.identity, fenceParent.transform);
-				}
 
 				if (previousPost == Vector3.zero)
 				{
@@ -62,13 +65,15 @@ public class FenceSpawner : MonoBehaviour
 					var barPosition = ((position - previousPost) / 2) + previousPost;
 					barPosition.y += height;
 					var barDirection = (position - previousPost).normalized;
-					var barLength = Mathf.Sqrt(Mathf.Pow(position.x - previousPost.x, 2) + Mathf.Pow(position.y - previousPost.y, 2) + Mathf.Pow(position.z - previousPost.z, 2));
+					var barLength = Mathf.Sqrt(Mathf.Pow(position.x - previousPost.x, 2) +
+					                           Mathf.Pow(position.y - previousPost.y, 2) +
+					                           Mathf.Pow(position.z - previousPost.z, 2));
 
-					Vector3 raycastOrigin = previousPost + new Vector3(0, height, 0) - barRaycastOffset;
-					RaycastHit[] hits = Physics.RaycastAll(raycastOrigin, barDirection, barLength);
+					var raycastOrigin = previousPost + new Vector3(0, height, 0) - barRaycastOffset;
+					var hits = Physics.RaycastAll(raycastOrigin, barDirection, barLength);
 					//Debug.DrawLine(raycastOrigin,raycastOrigin+(barDirection*barLength),Color.red,10);
 
-					if (hits.Length>0)
+					if (hits.Length > 0)
 					{
 						continue;
 					}
@@ -77,41 +82,29 @@ public class FenceSpawner : MonoBehaviour
 					var bar = Instantiate(BarPrefab, barPosition, barRotation, fenceParent.transform);
 					var barScale = bar.transform.localScale;
 
-					if (j != quantity)
-					{
-						barScale.z *= barLength / BarLength;
-					}
-					else
-					{
-						barScale.z *= remainder / BarLength;
-					}
+					if (j != quantity) barScale.z *= barLength / BarLength;
+					else barScale.z *= remainder / BarLength;
 
 					bar.transform.localScale = barScale;
-
 					if (j != quantity) continue;
-
 					bar.transform.position = ((position - previousPost) / 2) + previousPost + new Vector3(0, height, 0);
 				}
-
-
+				
 				previousPost = position;
 			}
 		}
 	}
 
+#if UNITY_EDITOR
+	private void Update()
+	{
+		SpawnFence();
+	}
+#endif
+
 	private float GetTerrainHeight(Vector3 position)
 	{
-		Ray ray = new Ray(position + Vector3.up * 1000f, Vector3.down);
-		if (Physics.Raycast(ray, out RaycastHit hitInfo))
-		{
-			return hitInfo.point.y;
-		}
-		else
-		{
-			return position.y;
-		}
+		var ray = new Ray(position + Vector3.up * 1000f, Vector3.down);
+		return Physics.Raycast(ray, out RaycastHit hitInfo) ? hitInfo.point.y : position.y;
 	}
-
-	public void ClearPoints() => Points.Clear();
-	public void AddPoint(Vector3 position) => Points.Add(position);
 }
