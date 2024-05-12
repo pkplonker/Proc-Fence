@@ -6,7 +6,7 @@ public class SceneGUIGenericMenu : Editor
 {
 	static SceneGUIGenericMenu()
 	{
-		SceneView.duringSceneGui += OnSceneGUI;
+		//SceneView.duringSceneGui += OnSceneGUI;
 	}
 
 	static void OnSceneGUI(SceneView sceneview)
