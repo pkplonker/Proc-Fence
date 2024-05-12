@@ -13,7 +13,7 @@ public class FenceSpawnerEditor : Editor
 		{
 			fenceSpawner.SpawnFence();
 		}
-		if (GUI.changed)
+		if (GUI.changed && fenceSpawner.ProcessOnUpdate)
 		{
 			fenceSpawner.SpawnFence();
 		}

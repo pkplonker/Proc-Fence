@@ -2,27 +2,54 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
 
-[InitializeOnLoad]
-[ExecuteInEditMode]
-#endif
+// #if UNITY_EDITOR
+// using UnityEditor;
+//
+// [InitializeOnLoad]
+// [ExecuteInEditMode]
+// #endif
 public class FenceSpawner : MonoBehaviour
 {
-	[SerializeField] private GameObject PostPrefab;
-	[SerializeField] private GameObject BarPrefab;
-	[SerializeField] private float BarLength;
-	[SerializeField] private List<Vector3> Points;
-	[SerializeField] private Vector3 barRaycastOffset;
-	[SerializeField] private float postInsertionDepth = 0.2f;
-	[SerializeField] private bool randomisation;
-	[SerializeField] private List<float> Heights;
+	[SerializeField]
+	private GameObject PostPrefab;
+
+	[SerializeField]
+	private GameObject BarPrefab;
+	[SerializeField]
+	private GameObject VerticalSlat;
+	[SerializeField]
+	private float BarLength;
+
+	[SerializeField]
+	private List<Vector3> Points;
+
+	[SerializeField]
+	private Vector3 BarRaycastOffset;
+
+	[SerializeField]
+	private float PostInsertionDepth = 0.2f;
+
+	[SerializeField]
+	private bool Randomisation;
+
+	[SerializeField]
+	private List<float> HorizontalHeights;
+
+	[SerializeField]
+	private bool closedLoop;
+
 	private GameObject fenceParent;
+
+	[SerializeField]
+	public bool ProcessOnUpdate;
+
+	[SerializeField]
+	private bool AvoidGroundIntersectionWithHorizontals;
 
 	public void SpawnFence()
 	{
-		if (Points.Count == 0 || Heights.Count == 0) throw new ArgumentNullException();
+		if (Points.Count == 0 || HorizontalHeights.Count == 0) throw new ArgumentNullException();
 
 		if (fenceParent != null)
 			DestroyImmediate(fenceParent);
@@ -34,8 +61,9 @@ public class FenceSpawner : MonoBehaviour
 				parent = transform
 			}
 		};
-		var postInsertion = new Vector3(0, postInsertionDepth, 0);
-		for (var i = 0; i < (Points.Count > 2 ? Points.Count : 1); i++)
+		var postInsertion = new Vector3(0, PostInsertionDepth, 0);
+		var iterations = (Points.Count > 2 ? Points.Count - (closedLoop ? 0 : 1) : 1);
+		for (var i = 0; i < iterations; i++)
 		{
 			var startPoint = Points[i];
 			var endPoint = Points[(i + 1) % Points.Count];
@@ -51,7 +79,7 @@ public class FenceSpawner : MonoBehaviour
 				positionVector = Vector3.ClampMagnitude(positionVector, distance);
 				var position = startPoint + positionVector;
 				position.y = GetTerrainHeight(position);
-				if (j != quantity)
+				if (j != quantity || !closedLoop)
 					Instantiate(PostPrefab, position - postInsertion, Quaternion.identity, fenceParent.transform);
 
 				if (previousPost == Vector3.zero)
@@ -60,7 +88,7 @@ public class FenceSpawner : MonoBehaviour
 					continue;
 				}
 
-				foreach (var height in Heights)
+				foreach (var height in HorizontalHeights)
 				{
 					var barPosition = ((position - previousPost) / 2) + previousPost;
 					barPosition.y += height;
@@ -69,11 +97,11 @@ public class FenceSpawner : MonoBehaviour
 					                           Mathf.Pow(position.y - previousPost.y, 2) +
 					                           Mathf.Pow(position.z - previousPost.z, 2));
 
-					var raycastOrigin = previousPost + new Vector3(0, height, 0) - barRaycastOffset;
+					var raycastOrigin = previousPost + new Vector3(0, height, 0) - BarRaycastOffset;
 					var hits = Physics.RaycastAll(raycastOrigin, barDirection, barLength);
 					//Debug.DrawLine(raycastOrigin,raycastOrigin+(barDirection*barLength),Color.red,10);
 
-					if (hits.Length > 0)
+					if (AvoidGroundIntersectionWithHorizontals && hits.Length > 0)
 					{
 						continue;
 					}
@@ -89,7 +117,7 @@ public class FenceSpawner : MonoBehaviour
 					if (j != quantity) continue;
 					bar.transform.position = ((position - previousPost) / 2) + previousPost + new Vector3(0, height, 0);
 				}
-				
+
 				previousPost = position;
 			}
 		}
