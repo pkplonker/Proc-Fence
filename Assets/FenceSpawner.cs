@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEditor;
 
 [InitializeOnLoad]
+[ExecuteInEditMode]
 #endif
 public class FenceSpawner : MonoBehaviour
 {
@@ -13,9 +14,10 @@ public class FenceSpawner : MonoBehaviour
 	[SerializeField] private GameObject BarPrefab;
 	[SerializeField] private float BarLength;
 	[SerializeField] private List<Vector3> Points;
-
+	[SerializeField] private Vector3 barRaycastOffset;
+	[SerializeField] private float postInsertionDepth = 0.2f;
+	[SerializeField] private bool randomisation;
 	[SerializeField] private List<float> Heights;
-
 	private GameObject fenceParent;
 
 	public void SpawnFence()
@@ -25,10 +27,15 @@ public class FenceSpawner : MonoBehaviour
 		if (fenceParent != null)
 			DestroyImmediate(fenceParent);
 
-		fenceParent = new GameObject("FenceParent");
-		fenceParent.transform.parent = this.transform;
-
-		for (var i = 0; i < Points.Count; i++)
+		fenceParent = new GameObject("FenceParent")
+		{
+			transform =
+			{
+				parent = transform
+			}
+		};
+		var postInsertion = new Vector3(0, postInsertionDepth, 0);
+		for (var i = 0; i < (Points.Count > 2 ? Points.Count : 1); i++)
 		{
 			var startPoint = Points[i];
 			var endPoint = Points[(i + 1) % Points.Count];
@@ -36,60 +43,68 @@ public class FenceSpawner : MonoBehaviour
 			var distance = Vector3.Distance(startPoint, endPoint);
 			var quantity = Mathf.CeilToInt(distance / BarLength);
 			var remainder = distance % BarLength;
-			for (var j = 0; j < quantity; j++)
+
+			var previousPost = Vector3.zero;
+			for (var j = 0; j <= quantity; j++)
 			{
-				Vector3 previousPosition = startPoint + direction * ((j == 0 ? 0 : j - 1) * BarLength);
-				previousPosition.y = GetTerrainHeight(previousPosition);
-
-				var position = startPoint + direction * (j * BarLength);
+				var positionVector = direction * (j * BarLength);
+				positionVector = Vector3.ClampMagnitude(positionVector, distance);
+				var position = startPoint + positionVector;
 				position.y = GetTerrainHeight(position);
+				if (j != quantity)
+					Instantiate(PostPrefab, position - postInsertion, Quaternion.identity, fenceParent.transform);
 
-				float threeDDistance = Vector3.Distance(previousPosition, position);
-				while (threeDDistance > BarLength)
+				if (previousPost == Vector3.zero)
 				{
-					position -= direction * 0.01f;
-					position.y = GetTerrainHeight(position);
-					threeDDistance = Vector3.Distance(previousPosition, position);
+					previousPost = position;
+					continue;
 				}
-			}
 
-			for (var j = 0; j < quantity; j++)
-			{
-				var position = startPoint + (direction * (j * BarLength));
-				position.y = GetTerrainHeight(position);
-				Instantiate(PostPrefab, position, Quaternion.identity, fenceParent.transform);
-				
-				
 				foreach (var height in Heights)
 				{
-					var barPosition = startPoint + direction * ((j + 0.5f) * BarLength + (BarLength * 0.5f));
+					var barPosition = ((position - previousPost) / 2) + previousPost;
 					barPosition.y += height;
-					var bar = Instantiate(BarPrefab, barPosition, Quaternion.LookRotation(direction),
-						fenceParent.transform);
-					if (j != quantity - 1) continue;
+					var barDirection = (position - previousPost).normalized;
+					var barLength = Mathf.Sqrt(Mathf.Pow(position.x - previousPost.x, 2) +
+					                           Mathf.Pow(position.y - previousPost.y, 2) +
+					                           Mathf.Pow(position.z - previousPost.z, 2));
 
+					var raycastOrigin = previousPost + new Vector3(0, height, 0) - barRaycastOffset;
+					var hits = Physics.RaycastAll(raycastOrigin, barDirection, barLength);
+					//Debug.DrawLine(raycastOrigin,raycastOrigin+(barDirection*barLength),Color.red,10);
+
+					if (hits.Length > 0)
+					{
+						continue;
+					}
+
+					var barRotation = Quaternion.LookRotation(barDirection);
+					var bar = Instantiate(BarPrefab, barPosition, barRotation, fenceParent.transform);
 					var barScale = bar.transform.localScale;
-					barScale.z *= remainder / BarLength;
-					bar.transform.localScale = barScale;
 
-					float adjustment = (BarLength * barScale.z);
-					bar.transform.position = startPoint + direction * ((j + 0.5f) * BarLength + (BarLength * 0.5f)) -
-					                         (direction * (BarLength - adjustment)) +
-					                         new Vector3(0, height, 0);
+					if (j != quantity) barScale.z *= barLength / BarLength;
+					else barScale.z *= remainder / BarLength;
+
+					bar.transform.localScale = barScale;
+					if (j != quantity) continue;
+					bar.transform.position = ((position - previousPost) / 2) + previousPost + new Vector3(0, height, 0);
 				}
+				
+				previousPost = position;
 			}
 		}
 	}
+
+#if UNITY_EDITOR
+	private void Update()
+	{
+		SpawnFence();
+	}
+#endif
+
 	private float GetTerrainHeight(Vector3 position)
 	{
-		Ray ray = new Ray(position + Vector3.up * 1000f, Vector3.down);
-		if (Physics.Raycast(ray, out RaycastHit hitInfo))
-		{
-			return hitInfo.point.y;
-		}
-		else
-		{
-			return position.y;
-		}
+		var ray = new Ray(position + Vector3.up * 1000f, Vector3.down);
+		return Physics.Raycast(ray, out RaycastHit hitInfo) ? hitInfo.point.y : position.y;
 	}
 }
